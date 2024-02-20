@@ -1,7 +1,9 @@
+import argparse
 import asyncio
+import pathlib
+
 import aiohttp
 import geopy.distance as distance
-import pathlib
 
 import mapbox
 
@@ -82,7 +84,29 @@ async def sample_roi(map_dir: str, sat_dir: float, roi: tuple[tuple[float, float
 
 
 async def main():
-    await sample_roi("data/map", "data/sat", ((43.700252, -79.50534), 12, 7.5, 24), 3, 3, num_workers=2)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("lat", type=float, help="Latitude of the top-left corner of the ROI.")
+    parser.add_argument("lon", type=float, help="Longitude of the top-left corner of the ROI.")
+    parser.add_argument("width", type=float, help="Width of the ROI in km.")
+    parser.add_argument("height", type=float, help="Height of the ROI in km.")
+    parser.add_argument("h_samples", type=int, help="Sample grid size (horizontal).")
+    parser.add_argument("v_samples", type=int, help="Sample grid size (vertical).")
+    
+    parser.add_argument("--rotation", default=0, type=float, help="How much the ROI rectangle is rotated (from being aligned with lat/lon lines) in degrees. Positive rotation is counterclockwise.")
+
+    parser.add_argument("--map-dir", default="data/map", type=str, help="Directory to store the map images.")
+    parser.add_argument("--sat-dir", default="data/sat", type=str, help="Directory to store the satellite images.")
+    parser.add_argument("--zoom", default=16, type=int, help="Zoom level.")
+    parser.add_argument("--bearing", default=0, type=int, help="Map rotation (degrees).")
+    parser.add_argument("--img-width", default=256, type=int, help="Width of the sampled images.")
+    parser.add_argument("--img-height", default=256, type=int, help="Height of the sampled images.")
+
+    parser.add_argument("--workers", default=1, type=int, help="Number of concurrent outgoing requests.")
+
+    args = parser.parse_args()
+
+    await sample_roi(args.map_dir, args.sat_dir, ((args.lat, args.lon), args.width, args.height, args.rotation), args.h_samples, args.v_samples, args.zoom, args.bearing, args.img_width, args.img_height, args.workers)
+
 
 if __name__ == "__main__":
     asyncio.get_event_loop().run_until_complete(main())
