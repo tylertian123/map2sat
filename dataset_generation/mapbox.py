@@ -4,8 +4,8 @@ This module requests images of maps and satellite views from Mapbox.
 Note asyncio is used here so requests can potentially be made in parallel.
 """
 
-import asyncio
 import io
+import pathlib
 
 import aiohttp
 import PIL.Image
@@ -18,9 +18,10 @@ STYLE_SAT = ("mapbox", "satellite-v9")
 # Height of mapbox watermark for cropping
 WATERMARK_HEIGHT = 20
 
+# Mapbox API key
+# Automatically read from mapbox_api_key.txt stored in the same dir as the script
 API_KEY = None
-
-with open("mapbox_api_key.txt", "r") as f:
+with open(pathlib.Path(__file__).parent / "mapbox_api_key.txt", "r") as f:
     API_KEY = f.read().strip()
 
 def format_url(map_type: str, lat: float, lon: float, zoom: float, bearing: int, width: int, height: int, token: str = API_KEY) -> str:
