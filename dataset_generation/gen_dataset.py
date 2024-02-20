@@ -34,35 +34,55 @@ def get_poi(roi_coords: tuple[float, float], width: float, height: float, rotati
 
 
 async def sample_roi(map_dir: str, sat_dir: float, roi: tuple[tuple[float, float], float, float, float],
-                     num_pts_h: int, num_pts_v: int, zoom: int = 16, bearing: int = 0, width: int = 256, height: int = 256) -> None:
+                     num_pts_h: int, num_pts_v: int, zoom: int = 16, bearing: int = 0, width: int = 256, height: int = 256,
+                     num_workers: int = 1) -> None:
     map_dir = pathlib.Path(map_dir)
     sat_dir = pathlib.Path(sat_dir)
     map_dir.mkdir(parents=True, exist_ok=True)
     sat_dir.mkdir(parents=True, exist_ok=True)
 
+    if num_workers > 1:
+        print("INFO: Using more than 1 worker")
+
     poi = get_poi(roi[0], roi[1], roi[2], roi[3], num_pts_h, num_pts_v)
-    async with aiohttp.ClientSession() as session:
-        for i, (lat, lon) in enumerate(poi):
-            print(f"Sampling coordinates ({lat:.6f}, {lon:.6f}) ({(i + 1) / len(poi) * 100:.2f}% complete)")
+    # Split into subsets for each worker
+    poi_subsets = []
+    pts_per_worker = len(poi) // num_workers
+    for i in range(num_workers):
+        if i < num_workers - 1:
+            poi_subsets.append(poi[i * pts_per_worker:(i + 1) * pts_per_worker])
+        else:
+            poi_subsets.append(poi[i * pts_per_worker:])
+    
+    total_sampled = 0
+
+    async def sample_subset(session, subset: list[tuple[float, float]]):
+        nonlocal total_sampled
+        for lat, lon in subset:
+            total_sampled += 1
             try:
                 map_img = await mapbox.request_image(session, "map", lat, lon, zoom, bearing, width, height)
                 sat_img = await mapbox.request_image(session, "sat", lat, lon, zoom, bearing, width, height)
             except (aiohttp.ClientResponseError, ValueError) as e:
                 print("\tError:", e)
-                print("\tSkipping this point!")
+                print(f"\tSkipping coordinates ({lat:.6f}, {lon:.6f})!")
                 continue
+            print(f"Sampled coordinates ({lat:.6f}, {lon:.6f}) ({total_sampled / len(poi) * 100:.2f}% complete)")
             map_path = map_dir / f"map_{lat:.6f}_{lon:.6f}_zoom{zoom}.png"
             sat_path = sat_dir / f"sat_{lat:.6f}_{lon:.6f}_zoom{zoom}.png"
             map_img.save(map_path)
             sat_img.save(sat_path)
             print("\tSaved map as", map_path)
             print("\tSaved sat as", sat_path)
+    
+    async with aiohttp.ClientSession() as session:
+        await asyncio.gather(*(sample_subset(session, subset) for subset in poi_subsets))
 
     print("Sampling completed.")
 
 
 async def main():
-    await sample_roi("data/map", "data/sat", ((43.700252, -79.50534), 12, 7.5, 24), 3, 3)
+    await sample_roi("data/map", "data/sat", ((43.700252, -79.50534), 12, 7.5, 24), 3, 3, num_workers=2)
 
 if __name__ == "__main__":
     asyncio.get_event_loop().run_until_complete(main())
