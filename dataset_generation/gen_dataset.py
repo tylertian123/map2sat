@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import pathlib
+import random
 
 import aiohttp
 import geopy.distance as distance
@@ -37,7 +38,7 @@ def get_poi(roi_coords: tuple[float, float], width: float, height: float, rotati
 
 async def sample_roi(map_dir: str, sat_dir: float, roi: tuple[tuple[float, float], float, float, float],
                      num_pts_h: int, num_pts_v: int, zoom: int = 16, bearing: int = 0, width: int = 256, height: int = 256,
-                     num_workers: int = 1) -> None:
+                     randomize_bearing: bool = False, num_workers: int = 1) -> None:
     map_dir = pathlib.Path(map_dir)
     sat_dir = pathlib.Path(sat_dir)
     map_dir.mkdir(parents=True, exist_ok=True)
@@ -63,6 +64,8 @@ async def sample_roi(map_dir: str, sat_dir: float, roi: tuple[tuple[float, float
         for lat, lon in subset:
             total_sampled += 1
             try:
+                if randomize_bearing:
+                    bearing = random.randint(0, 359)
                 map_img = await mapbox.request_image(session, "map", lat, lon, zoom, bearing, width, height)
                 sat_img = await mapbox.request_image(session, "sat", lat, lon, zoom, bearing, width, height)
             except (aiohttp.ClientResponseError, ValueError) as e:
@@ -100,12 +103,13 @@ async def main():
     parser.add_argument("--bearing", default=0, type=int, help="Map rotation (degrees).")
     parser.add_argument("--img-width", default=256, type=int, help="Width of the sampled images.")
     parser.add_argument("--img-height", default=256, type=int, help="Height of the sampled images.")
+    parser.add_argument("--randomize-bearing", action="store_true", help="Specify this flag to randomize the bearing of each image taken.")
 
     parser.add_argument("--workers", default=1, type=int, help="Number of concurrent outgoing requests.")
 
     args = parser.parse_args()
 
-    await sample_roi(args.map_dir, args.sat_dir, ((args.lat, args.lon), args.width, args.height, args.rotation), args.h_samples, args.v_samples, args.zoom, args.bearing, args.img_width, args.img_height, args.workers)
+    await sample_roi(args.map_dir, args.sat_dir, ((args.lat, args.lon), args.width, args.height, args.rotation), args.h_samples, args.v_samples, args.zoom, args.bearing, args.img_width, args.img_height, args.randomize_bearing, args.workers)
 
 
 if __name__ == "__main__":
