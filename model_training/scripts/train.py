@@ -255,6 +255,10 @@ def train_model(data_path: str, hp: Hyperparameters, use_cuda: bool=True):
             for i, data in enumerate(train_data, 0):
                 # Get the inputs
                 inputs, labels = data
+                # Place on GPU if available
+                if use_cuda and cuda.is_available():
+                    inputs = inputs.cuda()
+                    labels = labels.cuda()
                 # Zero the parameter gradients
                 optimizers[0].zero_grad()
                 optimizers[1].zero_grad()
