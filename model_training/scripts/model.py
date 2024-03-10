@@ -118,6 +118,13 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
         self.name = "discriminator"
         manual_seed(0)
+
+        self.down_stack = nn.ModuleList([
+            self.downsample(in_filter=6, out_filter=64, kernel_size=4, stride=2, batch_norm=False),
+            self.downsample(in_filter=64, out_filter=128, kernel_size=4, stride=2),
+            self.downsample(in_filter=128, out_filter=256, kernel_size=4, stride=2),
+        ])
+
         self.padding = nn.ZeroPad2d(1)
         self.conv1 = nn.Conv2d(in_channels=256, out_channels=512, kernel_size=4, stride=1)
         self.batchnorm = nn.BatchNorm2d(512)
@@ -164,9 +171,8 @@ class Discriminator(nn.Module):
         x = cat([input_image, generated_image], dim=1)   # concatenate the two inputs of the function
 
         # Run the encoders
-        x = self.downsample(in_filter=6, out_filter=64, kernel_size=4, stride=2, batch_norm=False)(x)
-        x = self.downsample(in_filter=64, out_filter=128, kernel_size=4, stride=2)(x)
-        x = self.downsample(in_filter=128, out_filter=256, kernel_size=4, stride=2)(x)
+        for layer in self.down_stack:
+            x = layer(x)
 
         # Run the final convolutional layers
         x = self.conv1(self.padding(x))
