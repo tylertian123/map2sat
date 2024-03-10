@@ -1,9 +1,10 @@
-from torch import nn, cat, randn
+from torch import nn, cat, randn, manual_seed
 
 """Generator Architecture"""
 class Generator(nn.Module):
     def __init__(self):
         super(Generator, self).__init__()
+        manual_seed(0)
         self.name = "generator"
         self.outlayer = nn.ConvTranspose2d(in_channels=128, out_channels=3, kernel_size=4, stride=2, padding=1)
     
@@ -115,6 +116,7 @@ class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
         self.name = "discriminator"
+        manual_seed(0)
         self.padding = nn.ZeroPad2d(1)
         self.conv1 = nn.Conv2d(in_channels=256, out_channels=512, kernel_size=4, stride=1)
         self.batchnorm = nn.BatchNorm2d(512)
