@@ -8,3 +8,6 @@ mapbox_api_key.txt
 *.jpeg
 *.jpg
 *.png
+
+.ipynb_checkpoints
+*.zip
