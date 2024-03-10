@@ -3,4 +3,4 @@ from load_dataset import load_data
 from model import Generator, Discriminator
 
 if __name__ == "__main__":
-    pass
+    train_model(data_path="data")
