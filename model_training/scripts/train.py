@@ -1,7 +1,7 @@
 import load_dataset
 import model
 
-from torch import nn, manual_seed, ones_like, zeros_like, optim, save
+from torch import nn, manual_seed, ones_like, zeros_like, optim, save, cuda
 from torch.utils.data import DataLoader
 from numpy import random, zeros, savetxt
 
@@ -62,7 +62,7 @@ class DiscriminatorLoss(nn.Module):
 
         return total_disc_loss
     
-def evaluate(networks: tuple, valid_data: DataLoader, criterions: tuple, baseline_model: bool=True):
+def evaluate(networks: tuple, valid_data: DataLoader, criterions: tuple, baseline_model: bool=True, use_cuda: bool=True):
     """
     Evaluate the model(s) based on the validation data
 
@@ -86,6 +86,12 @@ def evaluate(networks: tuple, valid_data: DataLoader, criterions: tuple, baselin
         for i, data in enumerate(valid_data, 0):
             # Get the inputs
             inputs, labels = data
+
+            # Place on GPU
+            if use_cuda and cuda.is_available():
+                inputs = inputs.cuda()
+                labels = labels.cuda()
+
             # Forward pass
             gen_outputs = networks[0](inputs)
             # Calculate the loss
@@ -112,7 +118,7 @@ def evaluate(networks: tuple, valid_data: DataLoader, criterions: tuple, baselin
         disc_loss = float(total_disc_loss) / (total_epoch)
         return gen_loss, disc_loss
 
-def train_model(data_path: str, epoch_num: int=200, batch_size: int=128, gen_lr: float=0.0001, disc_lr: float=0.0001, baseline_model: bool=True):
+def train_model(data_path: str, epoch_num: int=200, batch_size: int=128, gen_lr: float=0.0001, disc_lr: float=0.0001, baseline_model: bool=True, use_cuda: bool=True):
     """
     Train the model
 
@@ -131,6 +137,10 @@ def train_model(data_path: str, epoch_num: int=200, batch_size: int=128, gen_lr:
     train_data, valid_data, test_data = load_dataset.load_data(path=data_path, batch_size=batch_size)
     # Set up the model fundamentals for the generator
     gen_net = model.Generator()
+
+    if use_cuda and cuda.is_available():
+      gen_net.cuda()
+    
     gen_criterion = GeneratorLoss(baseline_model=baseline_model)
     gen_optim = optim.Adam(gen_net.parameters(), lr=gen_lr)
     gen_train_loss = zeros(epoch_num)
@@ -144,6 +154,10 @@ def train_model(data_path: str, epoch_num: int=200, batch_size: int=128, gen_lr:
     # Set the model fundamentals for the discriminator
     if baseline_model == False:
         disc_net = model.Discriminator()
+        
+        if use_cuda and cuda.is_available():
+          disc_net.cuda()
+        
         disc_criterion = DiscriminatorLoss()
         disc_optim = optim.Adam(disc_net.parameters(), lr=disc_lr)
         disc_train_loss = zeros(epoch_num)
@@ -164,6 +178,12 @@ def train_model(data_path: str, epoch_num: int=200, batch_size: int=128, gen_lr:
             for i, data in enumerate(train_data, 0):
                 # Get the inputs
                 inputs, labels = data
+
+                # Place on GPU if available
+                if use_cuda and cuda.is_available():
+                  inputs = inputs.cuda()
+                  labels = labels.cuda()
+
                 # Zero the parameter gradients
                 optimizers[0].zero_grad()
                 # Forward pass, backward pass, and optimize
@@ -176,7 +196,7 @@ def train_model(data_path: str, epoch_num: int=200, batch_size: int=128, gen_lr:
                 total_epoch += len(labels)
             # Save average loss data
             loss_data[0][epoch] = float(total_train_loss) / (total_epoch)
-            loss_data[1][epoch] = evaluate(networks, valid_data, criterions, baseline_model)
+            loss_data[1][epoch] = evaluate(networks, valid_data, criterions, baseline_model, use_cuda)
             print(f"epoch #{epoch}  #####  Baseline Training loss = {loss_data[0][epoch]}  #####  Baseline Validation loss = {loss_data[1][epoch]}")
 
             # Save the model and csv file of the loss
@@ -218,7 +238,7 @@ def train_model(data_path: str, epoch_num: int=200, batch_size: int=128, gen_lr:
             # Save average loss data
             loss_data[0][epoch] = float(total_gen_train_loss) / (total_epoch)
             loss_data[2][epoch] = float(total_disc_train_loss) / (total_epoch)
-            loss_data[1][epoch], loss_data[3][epoch] = evaluate(networks, valid_data, criterions, baseline_model)
+            loss_data[1][epoch], loss_data[3][epoch] = evaluate(networks, valid_data, criterions, baseline_model, use_cuda)
             print(f"epoch #{epoch}  #####  Generator Training loss = {loss_data[0][epoch]}  #####  Generator Validation loss = {loss_data[1][epoch]}")
             print(f"epoch #{epoch}  #####  Discriminator Training loss = {loss_data[2][epoch]}  #####  Discriminator Validation loss = {loss_data[3][epoch]}")
 
