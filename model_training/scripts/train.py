@@ -178,29 +178,24 @@ def train_model(data_path: str, epoch_num: int=20, batch_size: int=64, gen_lr: f
     if baseline_model:
         print("================== Baseline training starting ==================")
         for epoch in range(epoch_num):  # loop over the dataset multiple times
-            print(f"==== EPOCH {epoch} ====")
             total_train_loss = 0.0 # Scaled by the number of samples
             total_samples = 0
             networks[0].train()
             for i, data in enumerate(train_data, 0):
-                print(f"Iteration {i}")
-                print("Starting forward pass")
                 # Get the inputs
                 inputs, labels = data
 
                 # Place on GPU if available
                 if use_cuda and cuda.is_available():
-                  inputs = inputs.cuda()
-                  labels = labels.cuda()
+                    inputs = inputs.cuda()
+                    labels = labels.cuda()
 
                 # Zero the parameter gradients
                 optimizers[0].zero_grad()
                 # Forward pass, backward pass, and optimize
                 gen_outputs = networks[0](inputs)
                 gen_loss = criterions[0](None, gen_outputs, labels)
-                print("Done forward pass, starting backward pass")
                 gen_loss.backward()
-                print("Done backward pass")
                 optimizers[0].step()
                 # Calculate loss
                 total_train_loss += gen_loss.item() * len(labels)
@@ -211,7 +206,7 @@ def train_model(data_path: str, epoch_num: int=20, batch_size: int=64, gen_lr: f
             # Save average loss data
             loss_data[0][epoch] = float(total_train_loss) / (total_samples)
             loss_data[1][epoch] = evaluate(networks, valid_data, criterions, baseline_model, use_cuda)
-            print(f"epoch #{epoch}  #####  Baseline Training loss = {loss_data[0][epoch]}  #####  Baseline Validation loss = {loss_data[1][epoch]}")
+            print(f"EPOCH #{epoch}  #####  Baseline Training loss = {loss_data[0][epoch]}  #####  Baseline Validation loss = {loss_data[1][epoch]}")
 
             # Save the model and csv file of the loss
             path = "model_training/results/model={}-epoch_num={}-batch_size={}-gen_lr={}".format(name, epoch, batch_size, gen_lr)
@@ -223,6 +218,7 @@ def train_model(data_path: str, epoch_num: int=20, batch_size: int=64, gen_lr: f
                 save(networks[0].state_dict(), path)
     
     else:
+        print("================== Model training starting ==================")
         for epoch in range(epoch_num):  # loop over the dataset multiple times
             total_gen_train_loss = 0.0 # Scaled by number of samples
             total_disc_train_loss = 0.0
@@ -254,8 +250,8 @@ def train_model(data_path: str, epoch_num: int=20, batch_size: int=64, gen_lr: f
             loss_data[0][epoch] = float(total_gen_train_loss) / (total_samples)
             loss_data[2][epoch] = float(total_disc_train_loss) / (total_samples)
             loss_data[1][epoch], loss_data[3][epoch] = evaluate(networks, valid_data, criterions, baseline_model, use_cuda)
-            print(f"epoch #{epoch}  #####  Generator Training loss = {loss_data[0][epoch]}  #####  Generator Validation loss = {loss_data[1][epoch]}")
-            print(f"epoch #{epoch}  #####  Discriminator Training loss = {loss_data[2][epoch]}  #####  Discriminator Validation loss = {loss_data[3][epoch]}")
+            print(f"EPOCH #{epoch}  #####  Generator Training loss = {loss_data[0][epoch]}  #####  Generator Validation loss = {loss_data[1][epoch]}")
+            print(f"EPOCH #{epoch}  #####  Discriminator Training loss = {loss_data[2][epoch]}  #####  Discriminator Validation loss = {loss_data[3][epoch]}")
 
             # Save the model and csv file of the loss
             path = "model_training/results/model={}-epoch_num={}-batch_size={}-gen_lr={}-disc_lr={}".format(name, epoch, batch_size, gen_lr, disc_lr)
