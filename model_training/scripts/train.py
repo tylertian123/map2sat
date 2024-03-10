@@ -1,6 +1,8 @@
 import load_dataset
 import model
 
+import dataclasses
+
 from torch import nn, manual_seed, ones_like, zeros_like, optim, save, cuda
 from torch.utils.data import DataLoader
 from numpy import random, zeros, savetxt
@@ -61,6 +63,34 @@ class DiscriminatorLoss(nn.Module):
         total_disc_loss = generated_loss + real_loss
 
         return total_disc_loss
+
+@dataclasses.dataclass(frozen=True)
+class Hyperparameters:
+    """
+    Class aggregating hyperparameter settings for a model.
+
+    Note: To prevent bugs, the contents of an instance are NOT modifiable. Treat it like a tuple.
+    Use copy_and_change() to get a copy with some fields changed.
+    """
+
+    epoch_num: int = 20
+    batch_size: int = 64
+    gen_lr: float = 0.0001
+    disc_lr: float = 0.0001
+    baseline_model: bool = True
+
+    def get_filename(self):
+        name = "baseline" if self.baseline_model else "satgenerator"
+        filename = f"model={name}-epoch_num={self.epoch_num}-batch_size={self.batch_size}-gen_lr={self.gen_lr}"
+        if not self.baseline_model:
+            filename = f"{filename}-disc_lr={self.disc_lr}"
+        return filename
+    
+    def get_path(self, dir_type: str):
+        return f"model_training/{dir_type}/{self.get_filename()}"
+
+    def copy_and_change(self, **kwargs):
+        return dataclasses.replace(self, **kwargs)
     
 def evaluate(networks: tuple, valid_data: DataLoader, criterions: tuple, baseline_model: bool=True, use_cuda: bool=True):
     """
@@ -119,7 +149,7 @@ def evaluate(networks: tuple, valid_data: DataLoader, criterions: tuple, baselin
         disc_loss = float(total_disc_loss) / (total_samples)
         return gen_loss, disc_loss
 
-def train_model(data_path: str, epoch_num: int=20, batch_size: int=64, gen_lr: float=0.0001, disc_lr: float=0.0001, baseline_model: bool=True, use_cuda: bool=True):
+def train_model(data_path: str, hp: Hyperparameters, use_cuda: bool=True):
     """
     Train the model
 
@@ -130,22 +160,21 @@ def train_model(data_path: str, epoch_num: int=20, batch_size: int=64, gen_lr: f
         disc_lr: the speed of learning in gradient descent for the discriminator
         baseline_model: boolean to determine if the training is done for the baseline model
     """
-    name = "baseline" if baseline_model else "satgenerator" 
     # Fixed PyTorch random seed for reproducible result
     manual_seed(0)
     random.seed(0)
     # Load the data
-    train_data, valid_data, test_data = load_dataset.load_data(path=data_path, batch_size=batch_size)
+    train_data, valid_data, _ = load_dataset.load_data(path=data_path, batch_size=hp.batch_size)
     # Set up the model fundamentals for the generator
     gen_net = model.Generator()
 
     if use_cuda and cuda.is_available():
         gen_net.cuda()
     
-    gen_criterion = GeneratorLoss(baseline_model=baseline_model)
-    gen_optim = optim.Adam(gen_net.parameters(), lr=gen_lr)
-    gen_train_loss = zeros(epoch_num)
-    gen_val_loss = zeros(epoch_num)
+    gen_criterion = GeneratorLoss(baseline_model=hp.baseline_model)
+    gen_optim = optim.Adam(gen_net.parameters(), lr=hp.gen_lr)
+    gen_train_loss = zeros(hp.epoch_num)
+    gen_val_loss = zeros(hp.epoch_num)
 
     networks = [gen_net]
     criterions = [gen_criterion]
@@ -155,16 +184,16 @@ def train_model(data_path: str, epoch_num: int=20, batch_size: int=64, gen_lr: f
     print("INFO: Generator has", sum(p.numel() for p in networks[0].parameters()), "weights")
 
     # Set the model fundamentals for the discriminator
-    if not baseline_model:
+    if not hp.baseline_model:
         disc_net = model.Discriminator()
         
         if use_cuda and cuda.is_available():
             disc_net.cuda()
         
         disc_criterion = DiscriminatorLoss()
-        disc_optim = optim.Adam(disc_net.parameters(), lr=disc_lr)
-        disc_train_loss = zeros(epoch_num)
-        disc_val_loss = zeros(epoch_num)
+        disc_optim = optim.Adam(disc_net.parameters(), lr=hp.disc_lr)
+        disc_train_loss = zeros(hp.epoch_num)
+        disc_val_loss = zeros(hp.epoch_num)
 
         networks.append(disc_net)
         criterions.append(disc_criterion)
@@ -175,9 +204,9 @@ def train_model(data_path: str, epoch_num: int=20, batch_size: int=64, gen_lr: f
         print("INFO: Discriminator has", sum(p.numel() for p in networks[1].parameters()), "weights")
 
     # Train
-    if baseline_model:
+    if hp.baseline_model:
         print("================== Baseline training starting ==================")
-        for epoch in range(epoch_num):  # loop over the dataset multiple times
+        for epoch in range(hp.epoch_num):  # loop over the dataset multiple times
             total_train_loss = 0.0 # Scaled by the number of samples
             total_samples = 0
             networks[0].train()
@@ -205,21 +234,21 @@ def train_model(data_path: str, epoch_num: int=20, batch_size: int=64, gen_lr: f
 
             # Save average loss data
             loss_data[0][epoch] = float(total_train_loss) / (total_samples)
-            loss_data[1][epoch] = evaluate(networks, valid_data, criterions, baseline_model, use_cuda)
+            loss_data[1][epoch] = evaluate(networks, valid_data, criterions, hp.baseline_model, use_cuda)
             print(f"EPOCH #{epoch}  #####  Baseline Training loss = {loss_data[0][epoch]}  #####  Baseline Validation loss = {loss_data[1][epoch]}")
 
             # Save the model and csv file of the loss
-            path = "model_training/results/model={}-epoch_num={}-batch_size={}-gen_lr={}".format(name, epoch, batch_size, gen_lr)
-            if epoch == epoch_num - 1:
+            if epoch == hp.epoch_num - 1:
+                path = hp.copy_and_change(epoch_num=epoch).get_path("results")
                 savetxt("{}_baseline_train_loss.csv".format(path), loss_data[0])
                 savetxt("{}_baseline_valid_loss.csv".format(path), loss_data[1])
-            if epoch % 5 == 4 or epoch == epoch_num - 1:
-                path = path.replace("results", "models")
+            if epoch % 5 == 4 or epoch == hp.epoch_num - 1:
+                path = hp.copy_and_change(epoch_num=epoch).get_path("models")
                 save(networks[0].state_dict(), path)
     
     else:
         print("================== Model training starting ==================")
-        for epoch in range(epoch_num):  # loop over the dataset multiple times
+        for epoch in range(hp.epoch_num):  # loop over the dataset multiple times
             total_gen_train_loss = 0.0 # Scaled by number of samples
             total_disc_train_loss = 0.0
             total_samples = 0
@@ -249,17 +278,17 @@ def train_model(data_path: str, epoch_num: int=20, batch_size: int=64, gen_lr: f
             # Save average loss data
             loss_data[0][epoch] = float(total_gen_train_loss) / (total_samples)
             loss_data[2][epoch] = float(total_disc_train_loss) / (total_samples)
-            loss_data[1][epoch], loss_data[3][epoch] = evaluate(networks, valid_data, criterions, baseline_model, use_cuda)
+            loss_data[1][epoch], loss_data[3][epoch] = evaluate(networks, valid_data, criterions, hp.baseline_model, use_cuda)
             print(f"EPOCH #{epoch}  #####  Generator Training loss = {loss_data[0][epoch]}  #####  Generator Validation loss = {loss_data[1][epoch]}")
             print(f"EPOCH #{epoch}  #####  Discriminator Training loss = {loss_data[2][epoch]}  #####  Discriminator Validation loss = {loss_data[3][epoch]}")
 
             # Save the model and csv file of the loss
-            path = "model_training/results/model={}-epoch_num={}-batch_size={}-gen_lr={}-disc_lr={}".format(name, epoch, batch_size, gen_lr, disc_lr)
-            if epoch == epoch_num - 1:
+            if epoch == hp.epoch_num - 1:
+                path = hp.copy_and_change(epoch_num=epoch).get_path("results")
                 savetxt("{}_gen_train_loss.csv".format(path), loss_data[0])
                 savetxt("{}_gen_valid_loss.csv".format(path), loss_data[1])
                 savetxt("{}_disc_train_loss.csv".format(path), loss_data[2])
                 savetxt("{}_disc_valid_loss.csv".format(path), loss_data[3])
-            if epoch % 5 == 4 or epoch == epoch_num - 1:
-                path = path.replace("results", "models")
+            if epoch % 5 == 4 or epoch == hp.epoch_num - 1:
+                path = hp.copy_and_change(epoch_num=epoch).get_path("models")
                 save(networks[0].state_dict(), path)
