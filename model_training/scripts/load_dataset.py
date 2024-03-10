@@ -10,30 +10,23 @@ import os
 
 def make_dataset(root: str) -> list:
     """Reads a directory with data.
-    Returns a dataset as a list of tuples of paired image paths: (rgb_path, gt_path)
+    Returns a dataset as a list of tuples of paired image paths: (input_path, label_path)
     """
     dataset = []
 
-    # Our dir names
-    input_dir = root + 'map'
-    label_dir = root + 'sat'
+    # Our dir names for inputs and labels
+    input_dir = os.path.join(root, 'map')
+    label_dir = os.path.join(root, 'sat')
 
-    # Get all the filenames from RGB folder
-    rgb_fnames = sorted(os.listdir(os.path.join(root, input_dir)))
-
-    # Compare file names from GT folder to file names from RGB:
-    for gt_fname in sorted(os.listdir(os.path.join(root, label_dir))):
-
-            if gt_fname in rgb_fnames:
-                # if we have a match - create pair of full path to the corresponding images
-                input_path = os.path.join(root, input_dir, gt_fname)
-                label_path = os.path.join(root, label_dir, gt_fname)
-
-                item = (input_path, label_path)
-                # append to the list dataset
-                dataset.append(item)
-            else:
-                continue
+    input_fnames = []
+    for folder in os.listdir(input_dir):
+        # input_fnames.extend(os.listdir(os.path.join(input_dir, folder)))
+        for file in os.listdir(os.path.join(input_dir, folder)):
+            input_path = os.path.join(input_dir, folder, file)
+            label_file = "sat" + file[3:]
+            label_path = os.path.join(label_dir, folder, label_file)
+            print(label_path, input_path)
+            dataset.append((input_path, label_path))
 
     return dataset
 
@@ -98,8 +91,8 @@ def load_data(path: str, batch_size: int=64, validation_size: float=0.1, test_si
         valid_loader: batches of dataset for validation
         test_loader: batches of dataset for testing
     """
-    input_path = path + "/map"
-    label_path = path + "/sat"
+    # input_path = path + "/map"
+    # label_path = path + "/sat"
     transform = T.Compose([T.ToTensor()])
 
     random_seed = 42
@@ -108,17 +101,16 @@ def load_data(path: str, batch_size: int=64, validation_size: float=0.1, test_si
     # ImageFolder is used to provide the option to fairly distribute the training, validation, and testing dataset based on location classification
 
     dataset = CustomVisionDataset(path, input_transform=transform, label_transform=transform)
+    print(dataset)
 
     seed.seed(random_seed)
     all_indices = list(range(len(dataset)))
-    train_valid, test = train_test_split(all_indices, test_size=test_size, stratify=dataset.targets)
-    train, valid = train_test_split(train_valid, test_size=validation_size, stratify=[dataset.targets[i] for i in train_valid])
+    train_valid, test = train_test_split(all_indices, test_size=test_size, train_size=(1-test_size))
+    train, valid = train_test_split(train_valid, test_size=validation_size, train_size=(1-validation_size))
 
     train_loader = DataLoader(dataset, batch_size=batch_size, sampler=train, num_workers=1)
     valid_loader = DataLoader(dataset, batch_size=batch_size, sampler=valid, num_workers=1)
     test_loader = DataLoader(dataset, batch_size=batch_size, sampler=test, num_workers=1)
-
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     # OLDER STRATEGY
     

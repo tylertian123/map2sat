@@ -175,7 +175,7 @@ def train_model(data_path: str, epoch_num: int=200, batch_size: int=128, gen_lr:
             total_train_loss = 0.0
             total_epoch = 0
             networks[0].train()
-            for i, data in enumerate(train_data, 0):
+            for i, data in enumerate(train_data):
                 # Get the inputs
                 inputs, labels = data
 
