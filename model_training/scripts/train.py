@@ -214,11 +214,11 @@ def train_model(data_path: str, epoch_num: int=20, batch_size: int=64, gen_lr: f
             print(f"epoch #{epoch}  #####  Baseline Training loss = {loss_data[0][epoch]}  #####  Baseline Validation loss = {loss_data[1][epoch]}")
 
             # Save the model and csv file of the loss
-            path = "model_training/results/model={}_epoch_num={}_batch_size={}gen_lr={}".format(name, epoch, batch_size, gen_lr)
-            if epoch == epoch_num:
+            path = "model_training/results/model={}-epoch_num={}-batch_size={}gen_lr={}".format(name, epoch, batch_size, gen_lr)
+            if epoch == epoch_num - 1:
                 savetxt("{}_baseline_train_loss.csv".format(path), loss_data[0])
                 savetxt("{}_baseline_valid_loss.csv".format(path), loss_data[1])
-            if epoch % 5 == 4 or epoch == epoch_num:
+            if epoch % 5 == 4 or epoch == epoch_num - 1:
                 path = path.replace("results", "models")
                 save(networks[0].state_dict(), path)
     
@@ -258,12 +258,12 @@ def train_model(data_path: str, epoch_num: int=20, batch_size: int=64, gen_lr: f
             print(f"epoch #{epoch}  #####  Discriminator Training loss = {loss_data[2][epoch]}  #####  Discriminator Validation loss = {loss_data[3][epoch]}")
 
             # Save the model and csv file of the loss
-            path = "model_training/results/model={}_epoch_num={}_batch_size={}gen_lr={}_disc_lr={}".format(name, epoch, batch_size, gen_lr, disc_lr)
+            path = "model_training/results/model={}-epoch_num={}-batch_size={}-gen_lr={}-disc_lr={}".format(name, epoch, batch_size, gen_lr, disc_lr)
             if epoch == epoch_num - 1:
                 savetxt("{}_gen_train_loss.csv".format(path), loss_data[0])
                 savetxt("{}_gen_valid_loss.csv".format(path), loss_data[1])
                 savetxt("{}_disc_train_loss.csv".format(path), loss_data[2])
                 savetxt("{}_disc_valid_loss.csv".format(path), loss_data[3])
-            if epoch % 5 == 4 or epoch == epoch_num:
+            if epoch % 5 == 4 or epoch == epoch_num - 1:
                 path = path.replace("results", "models")
                 save(networks[0].state_dict(), path)
