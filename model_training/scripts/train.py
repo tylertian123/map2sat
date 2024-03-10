@@ -152,8 +152,10 @@ def train_model(data_path: str, epoch_num: int=20, batch_size: int=64, gen_lr: f
     optimizers = [gen_optim]
     loss_data = [gen_train_loss, gen_val_loss]
 
+    print("INFO: Generator has", sum(p.numel() for p in networks[0].parameters()), "weights")
+
     # Set the model fundamentals for the discriminator
-    if baseline_model == False:
+    if not baseline_model:
         disc_net = model.Discriminator()
         
         if use_cuda and cuda.is_available():
@@ -169,6 +171,8 @@ def train_model(data_path: str, epoch_num: int=20, batch_size: int=64, gen_lr: f
         optimizers.append(disc_optim)
         loss_data.append(disc_train_loss)
         loss_data.append(disc_val_loss)
+
+        print("INFO: Discriminator has", sum(p.numel() for p in networks[1].parameters()), "weights")
 
     # Train
     if baseline_model:

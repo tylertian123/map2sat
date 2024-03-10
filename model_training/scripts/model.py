@@ -7,6 +7,28 @@ class Generator(nn.Module):
         manual_seed(0)
         self.name = "generator"
         self.outlayer = nn.ConvTranspose2d(in_channels=128, out_channels=3, kernel_size=4, stride=2, padding=1)
+
+        # Add all the encoding blocks
+        self.down_stack = nn.ModuleList([
+            self.downsample(in_filter=3, out_filter=64, kernel_size=4, stride=2, batch_norm=False),
+            self.downsample(in_filter=64, out_filter=128, kernel_size=4, stride=2),
+            self.downsample(in_filter=128, out_filter=256, kernel_size=4, stride=2),
+            self.downsample(in_filter=256, out_filter=512, kernel_size=4, stride=2),
+            self.downsample(in_filter=512, out_filter=512, kernel_size=4, stride=2),
+            self.downsample(in_filter=512, out_filter=512, kernel_size=4, stride=2),
+            self.downsample(in_filter=512, out_filter=512, kernel_size=4, stride=2),
+            self.downsample(in_filter=512, out_filter=512, kernel_size=4, stride=2, batch_norm=False)
+        ])
+        # Add all the decoding blocks
+        self.up_stack = nn.ModuleList([
+            self.upsample(in_filter=512, out_filter=512, kernel_size=4, stride=2, dropout=True),
+            self.upsample(in_filter=1024, out_filter=512, kernel_size=4, stride=2, dropout=True),
+            self.upsample(in_filter=1024, out_filter=512, kernel_size=4, stride=2, dropout=True),
+            self.upsample(in_filter=1024, out_filter=512, kernel_size=4, stride=2),
+            self.upsample(in_filter=1024, out_filter=256, kernel_size=4, stride=2),
+            self.upsample(in_filter=512, out_filter=128, kernel_size=4, stride=2),
+            self.upsample(in_filter=256, out_filter=64, kernel_size=4, stride=2)
+        ])
     
     def downsample(self, in_filter: int, out_filter: int, kernel_size: int, stride: int, batch_norm: bool=True):
         """
@@ -71,38 +93,17 @@ class Generator(nn.Module):
         Return:
             x: the output of the U-Net generator [batch_size, 3, 256, 256]
         """
-        # Add all the encoding blocks
-        down_stack = [
-            self.downsample(in_filter=3, out_filter=64, kernel_size=4, stride=2, batch_norm=False),
-            self.downsample(in_filter=64, out_filter=128, kernel_size=4, stride=2),
-            self.downsample(in_filter=128, out_filter=256, kernel_size=4, stride=2),
-            self.downsample(in_filter=256, out_filter=512, kernel_size=4, stride=2),
-            self.downsample(in_filter=512, out_filter=512, kernel_size=4, stride=2),
-            self.downsample(in_filter=512, out_filter=512, kernel_size=4, stride=2),
-            self.downsample(in_filter=512, out_filter=512, kernel_size=4, stride=2),
-            self.downsample(in_filter=512, out_filter=512, kernel_size=4, stride=2, batch_norm=False)
-        ]
-        # Add all the decoding blocks
-        up_stack = [
-            self.upsample(in_filter=512, out_filter=512, kernel_size=4, stride=2, dropout=True),
-            self.upsample(in_filter=1024, out_filter=512, kernel_size=4, stride=2, dropout=True),
-            self.upsample(in_filter=1024, out_filter=512, kernel_size=4, stride=2, dropout=True),
-            self.upsample(in_filter=1024, out_filter=512, kernel_size=4, stride=2),
-            self.upsample(in_filter=1024, out_filter=256, kernel_size=4, stride=2),
-            self.upsample(in_filter=512, out_filter=128, kernel_size=4, stride=2),
-            self.upsample(in_filter=256, out_filter=64, kernel_size=4, stride=2)
-        ]
         
         # Run the encoders
         skips = []
-        for layer in down_stack:
+        for layer in self.down_stack:
             # print(x.shape)
             x = layer(x)
             skips.append(x)   # save the outputs to be used as skip connections later
         
         # Run the decoders
         skips = reversed(skips[:-1])
-        for layer, skip in zip(up_stack, skips):
+        for layer, skip in zip(self.up_stack, skips):
             # print(x.shape)
             x = layer(x)
             x = cat([x, skip], dim=1)   # concatinate the result with the skip connections
