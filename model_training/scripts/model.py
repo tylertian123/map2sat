@@ -176,7 +176,7 @@ class Discriminator(nn.Module):
         return x
 
 # The following code can be used to debug the dimension of models' outputs
-
+"""
 model1 = Generator()
 tensor1 = randn(7, 3, 256, 256)
 output1 = model1(tensor1)
@@ -184,7 +184,6 @@ print(output1.shape)
 
 print(sum(p.numel() for p in model1.parameters()))
 
-"""
 model2 = Discriminator()
 tensor2 = randn(7, 3, 256, 256)
 output2 = model2(output1, tensor2)

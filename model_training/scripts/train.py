@@ -215,6 +215,7 @@ def train_model(data_path: str, epoch_num: int=20, batch_size: int=64, gen_lr: f
                 savetxt("{}_baseline_train_loss.csv".format(path), loss_data[0])
                 savetxt("{}_baseline_valid_loss.csv".format(path), loss_data[1])
             if epoch % 5 == 4 or epoch == epoch_num:
+                path = path.replace("results", "models")
                 save(networks[0].state_dict(), path)
     
     else:
@@ -260,4 +261,5 @@ def train_model(data_path: str, epoch_num: int=20, batch_size: int=64, gen_lr: f
                 savetxt("{}_disc_train_loss.csv".format(path), loss_data[2])
                 savetxt("{}_disc_valid_loss.csv".format(path), loss_data[3])
             if epoch % 5 == 4 or epoch == epoch_num:
+                path = path.replace("results", "models")
                 save(networks[0].state_dict(), path)
