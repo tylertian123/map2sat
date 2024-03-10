@@ -1,5 +1,5 @@
-import load_dataset
-import model
+from model_training.scripts.load_dataset import load_data
+import model_training.scripts.model as model
 
 import dataclasses
 
@@ -164,7 +164,7 @@ def train_model(data_path: str, hp: Hyperparameters, use_cuda: bool=True):
     manual_seed(0)
     random.seed(0)
     # Load the data
-    train_data, valid_data, _ = load_dataset.load_data(path=data_path, batch_size=hp.batch_size)
+    train_data, valid_data, _ = load_data(path=data_path, batch_size=hp.batch_size)
     # Set up the model fundamentals for the generator
     gen_net = model.Generator()
 

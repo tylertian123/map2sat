@@ -1,4 +1,4 @@
-from train import Hyperparameters
+from model_training.scripts.train import Hyperparameters
 
 import matplotlib.pyplot as plt
 import pandas as pd
