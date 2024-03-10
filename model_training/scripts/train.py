@@ -90,7 +90,7 @@ def evaluate(networks: tuple, valid_data: DataLoader, criterions: tuple, baselin
             gen_outputs = networks[0](inputs)
             # Calculate the loss
             gen_loss = criterions[0](None, gen_outputs, labels)
-            total_gen_loss += loss.item()
+            total_gen_loss += gen_loss.item()
             total_epoch += len(labels)
         gen_loss = float(total_gen_loss) / (total_epoch)
         return gen_loss
@@ -112,7 +112,7 @@ def evaluate(networks: tuple, valid_data: DataLoader, criterions: tuple, baselin
         disc_loss = float(total_disc_loss) / (total_epoch)
         return gen_loss, disc_loss
 
-def train_model(epoch_num: int=200, batch_size: int=128, gen_lr: float=0.0001, disc_lr: float=0.0001, baseline_model: bool=True):
+def train_model(path: str, epoch_num: int=200, batch_size: int=128, gen_lr: float=0.0001, disc_lr: float=0.0001, baseline_model: bool=True):
     """
     Train the model
 
@@ -128,7 +128,7 @@ def train_model(epoch_num: int=200, batch_size: int=128, gen_lr: float=0.0001, d
     manual_seed(0)
     random.seed(0)
     # Load the data
-    train_data, valid_data, test_data = load_dataset.load_data(path="data", batch_size=batch_size)
+    train_data, valid_data, test_data = load_dataset.load_data(path=path, batch_size=batch_size)
     # Set up the model fundamentals for the generator
     gen_net = model.Generator()
     gen_criterion = GeneratorLoss(baseline_model=baseline_model)
