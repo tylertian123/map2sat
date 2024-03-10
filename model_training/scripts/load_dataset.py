@@ -25,7 +25,6 @@ def make_dataset(root: str) -> list:
             input_path = os.path.join(input_dir, folder, file)
             label_file = "sat" + file[3:]
             label_path = os.path.join(label_dir, folder, label_file)
-            print(label_path, input_path)
             dataset.append((input_path, label_path))
 
     return dataset
@@ -75,7 +74,7 @@ class CustomVisionDataset(VisionDataset):
         return len(self.samples)
 
 
-def load_data(path: str, batch_size: int=64, validation_size: float=0.1, test_size: float=0.1, dataloader_test: bool=False):
+def load_data(path: str, batch_size: int=64, validation_size: float=0.1, test_size: float=0.1, dataloader_test: bool=True):
     """
     Load the data and splitting it into three sections of training, validating, and testing
 

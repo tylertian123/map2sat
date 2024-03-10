@@ -82,6 +82,7 @@ def evaluate(networks: tuple, valid_data: DataLoader, criterions: tuple, baselin
 
     for net in networks:
         net.eval()
+
     if baseline_model:
         for i, data in enumerate(valid_data, 0):
             # Get the inputs
@@ -118,7 +119,7 @@ def evaluate(networks: tuple, valid_data: DataLoader, criterions: tuple, baselin
         disc_loss = float(total_disc_loss) / (total_epoch)
         return gen_loss, disc_loss
 
-def train_model(data_path: str, epoch_num: int=200, batch_size: int=128, gen_lr: float=0.0001, disc_lr: float=0.0001, baseline_model: bool=True, use_cuda: bool=True):
+def train_model(data_path: str, epoch_num: int=20, batch_size: int=64, gen_lr: float=0.0001, disc_lr: float=0.0001, baseline_model: bool=True, use_cuda: bool=True):
     """
     Train the model
 
@@ -139,7 +140,7 @@ def train_model(data_path: str, epoch_num: int=200, batch_size: int=128, gen_lr:
     gen_net = model.Generator()
 
     if use_cuda and cuda.is_available():
-      gen_net.cuda()
+        gen_net.cuda()
     
     gen_criterion = GeneratorLoss(baseline_model=baseline_model)
     gen_optim = optim.Adam(gen_net.parameters(), lr=gen_lr)
@@ -156,7 +157,7 @@ def train_model(data_path: str, epoch_num: int=200, batch_size: int=128, gen_lr:
         disc_net = model.Discriminator()
         
         if use_cuda and cuda.is_available():
-          disc_net.cuda()
+            disc_net.cuda()
         
         disc_criterion = DiscriminatorLoss()
         disc_optim = optim.Adam(disc_net.parameters(), lr=disc_lr)
@@ -171,11 +172,15 @@ def train_model(data_path: str, epoch_num: int=200, batch_size: int=128, gen_lr:
 
     # Train
     if baseline_model:
+        print("================== Baseline training starting ==================")
         for epoch in range(epoch_num):  # loop over the dataset multiple times
+            print(f"==== EPOCH {epoch} ====")
             total_train_loss = 0.0
             total_epoch = 0
             networks[0].train()
-            for i, data in enumerate(train_data):
+            for i, data in enumerate(train_data, 0):
+                print(f"Iteration {i}")
+                print("Starting forward pass")
                 # Get the inputs
                 inputs, labels = data
 
@@ -189,11 +194,16 @@ def train_model(data_path: str, epoch_num: int=200, batch_size: int=128, gen_lr:
                 # Forward pass, backward pass, and optimize
                 gen_outputs = networks[0](inputs)
                 gen_loss = criterions[0](None, gen_outputs, labels)
+                print("Done forward pass, starting backward pass")
                 gen_loss.backward()
+                print("Done backward pass")
                 optimizers[0].step()
                 # Calculate loss
                 total_train_loss += gen_loss.item()
                 total_epoch += len(labels)
+
+                print(f"Generator loss: {gen_loss.item() / len(labels)}")
+
             # Save average loss data
             loss_data[0][epoch] = float(total_train_loss) / (total_epoch)
             loss_data[1][epoch] = evaluate(networks, valid_data, criterions, baseline_model, use_cuda)
@@ -244,7 +254,7 @@ def train_model(data_path: str, epoch_num: int=200, batch_size: int=128, gen_lr:
 
             # Save the model and csv file of the loss
             path = "model_training/results/model={}_epoch_num={}_batch_size={}gen_lr={}_disc_lr={}".format(name, epoch, batch_size, gen_lr, disc_lr)
-            if epoch == epoch_num:
+            if epoch == epoch_num - 1:
                 savetxt("{}_gen_train_loss.csv".format(path), loss_data[0])
                 savetxt("{}_gen_valid_loss.csv".format(path), loss_data[1])
                 savetxt("{}_disc_train_loss.csv".format(path), loss_data[2])
