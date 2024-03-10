@@ -230,8 +230,6 @@ def train_model(data_path: str, hp: Hyperparameters, use_cuda: bool=True):
                 total_train_loss += gen_loss.item() * len(labels)
                 total_samples += len(labels)
 
-                print(f"Generator loss: {gen_loss.item()}")
-
             # Save average loss data
             loss_data[0][epoch] = float(total_train_loss) / (total_samples)
             loss_data[1][epoch] = evaluate(networks, valid_data, criterions, hp.baseline_model, use_cuda)
@@ -275,6 +273,7 @@ def train_model(data_path: str, hp: Hyperparameters, use_cuda: bool=True):
                 total_gen_train_loss += gen_loss.item() * len(labels)
                 total_disc_train_loss += disc_loss.item() * len(labels)
                 total_samples += len(labels)
+                
             # Save average loss data
             loss_data[0][epoch] = float(total_gen_train_loss) / (total_samples)
             loss_data[2][epoch] = float(total_disc_train_loss) / (total_samples)
