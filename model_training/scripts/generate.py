@@ -4,23 +4,32 @@ from matplotlib import gridspec, pyplot as plt
 
 import itertools
 
-from model_training.scripts.model import Generator
+from model_training.scripts.model import Generator, Discriminator
 from model_training.scripts.train import Hyperparameters
 from model_training.scripts.load_dataset import load_data
 
 
-def load_model(hp: Hyperparameters, device: str = "cpu") -> Generator:
+def load_model(hp: Hyperparameters, type: str = None, device: str = "cpu") -> Generator | Discriminator:
     """
     Load a saved model.
     
     device can be "cpu" or "gpu", which will remap the model onto a different device.
     If None, the device the model was originally on will be used.
+
+    The type argument should only be specified for non-baseline models, in which case 
+    it should be either "gen" or "disc", specifying whether to load a generator or 
+    discriminator.
     """
-    if not hp.baseline_model:
-        raise NotImplementedError("Cannot load non-baseline model")
 
     path = hp.get_path("models")
-    model = Generator()
+    if type is not None:
+        path += "_" + type
+        if type == "gen":
+            model = Generator()
+        else:
+            model = Discriminator()
+    else:
+        model = Generator()
 
     if device == "cpu":
         map_location = "cpu"

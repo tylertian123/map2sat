@@ -306,4 +306,5 @@ def train_model(data_path: str, hp: Hyperparameters, use_cuda: bool=True):
                 savetxt("{}_disc_valid_loss.csv".format(path), loss_data[3])
             if epoch % 5 == 4 or epoch == hp.epoch_num - 1:
                 path = hp.copy_and_change(epoch_num=epoch).get_path("models")
-                save(networks[0].state_dict(), path)
+                save(networks[0].state_dict(), path + "_gen")
+                save(networks[1].state_dict(), path + "_disc")
