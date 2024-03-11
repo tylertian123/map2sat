@@ -1,4 +1,8 @@
-from model_training.scripts.train import Hyperparameters
+import os
+if "COLAB_GPU" in os.environ:
+    from model_training.scripts.train import Hyperparameters
+else:
+    from train import Hyperparameters
 
 import matplotlib.pyplot as plt
 import pandas as pd

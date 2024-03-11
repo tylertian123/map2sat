@@ -1,5 +1,10 @@
-from model_training.scripts.load_dataset import load_data
-import model_training.scripts.model as model
+import os
+if "COLAB_GPU" in os.environ:
+    from model_training.scripts.load_dataset import load_data
+    import model_training.scripts.model as model
+else:
+    from load_dataset import load_data
+    import model
 
 import dataclasses
 

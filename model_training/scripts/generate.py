@@ -4,9 +4,15 @@ from matplotlib import gridspec, pyplot as plt
 
 import itertools
 
-from model_training.scripts.model import Generator, Discriminator
-from model_training.scripts.train import Hyperparameters
-from model_training.scripts.load_dataset import load_data
+import os
+if "COLAB_GPU" in os.environ:
+    from model_training.scripts.model import Generator, Discriminator
+    from model_training.scripts.train import Hyperparameters
+    from model_training.scripts.load_dataset import load_data
+else:
+    from model import Generator, Discriminator
+    from train import Hyperparameters
+    from load_dataset import load_data
 
 
 def load_model(hp: Hyperparameters, type: str = None, device: str = "cpu") -> Generator | Discriminator:
