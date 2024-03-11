@@ -227,12 +227,12 @@ def train_model(hp: Hyperparameters, cont_hp: Hyperparameters = None, checkpoint
             if not hp.baseline_model:
                 path += "_disc"
             if use_cuda and cuda.is_available():
-                gen_net.load_state_dict(torch.load(path, map_location="cuda:0"))
+                disc_net.load_state_dict(torch.load(path, map_location="cuda:0"))
             else:
-                gen_net.load_state_dict(torch.load(path, map_location="cpu"))
+                disc_net.load_state_dict(torch.load(path, map_location="cpu"))
         else:
             if use_cuda and cuda.is_available():
-                gen_net.cuda()
+                disc_net.cuda()
         
         disc_criterion = DiscriminatorLoss()
         disc_optim = optim.Adam(disc_net.parameters(), lr=hp.disc_lr)
