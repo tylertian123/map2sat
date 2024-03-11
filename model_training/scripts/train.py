@@ -9,9 +9,9 @@ else:
 import dataclasses
 
 import torch
+import numpy as np
 from torch import nn, manual_seed, ones_like, zeros_like, optim, save, cuda
 from torch.utils.data import DataLoader
-from numpy import random, zeros, savetxt
 from tqdm.auto import tqdm
 
 class GeneratorLoss(nn.Module):
@@ -166,32 +166,51 @@ def evaluate(networks: tuple, valid_data: DataLoader, criterions: tuple, baselin
         disc_loss = float(total_disc_loss) / (total_samples)
         return gen_loss, disc_loss
 
-def train_model(hp: Hyperparameters, use_cuda: bool=True):
+def train_model(hp: Hyperparameters, cont_hp: Hyperparameters = None, checkpoint_per: int = 5, use_cuda: bool=True):
     """
     Train the model
 
     Arguments:
-        epoch_num: the number of iterations in learning process
-        batch_size: the size of our mini batches
-        gen_lr: the speed of learning in gradient descent for the generator
-        disc_lr: the speed of learning in gradient descent for the discriminator
-        baseline_model: boolean to determine if the training is done for the baseline model
+        hp: Hyperparameter set for training.
+        cont_hp: If supplied, training will be resumed from the model checkpoint specified in this.
+        checkpoint_per: Save losses and model checkpoints every this many iterations.
+        use_cuda: If true and has support, will use CUDA for training.
     """
+    if cont_hp is not None and hp.baseline_model != cont_hp.baseline_model:
+        raise ValueError("Model types must match")
+
     # Fixed PyTorch random seed for reproducible result
     manual_seed(0)
-    random.seed(0)
+    np.random.seed(0)
     # Load the data
     train_data, valid_data, _ = load_data(path=hp.data_path, batch_size=hp.batch_size)
     # Set up the model fundamentals for the generator
     gen_net = model.Generator()
-
-    if use_cuda and cuda.is_available():
-        gen_net.cuda()
+    # Load model if continuing from checkpoint
+    if cont_hp is not None:
+        path = cont_hp.get_path("models")
+        if not hp.baseline_model:
+            path += "_gen"
+        if use_cuda and cuda.is_available():
+            gen_net.load_state_dict(torch.load(path, map_location="cuda:0"))
+        else:
+            gen_net.load_state_dict(torch.load(path, map_location="cpu"))
+    else:
+        if use_cuda and cuda.is_available():
+            gen_net.cuda()
     
     gen_criterion = GeneratorLoss(baseline_model=hp.baseline_model)
     gen_optim = optim.Adam(gen_net.parameters(), lr=hp.gen_lr)
-    gen_train_loss = zeros(hp.epoch_num)
-    gen_val_loss = zeros(hp.epoch_num)
+    gen_train_loss = np.zeros(hp.epoch_num)
+    gen_val_loss = np.zeros(hp.epoch_num)
+
+    # If continuing training, load the previous training and validation losses
+    if cont_hp is not None:
+        name = "baseline" if cont_hp.baseline_model else "gen"
+        train_loss = np.genfromtxt(cont_hp.get_path("results") + f"_{name}_train_loss.csv")
+        val_loss = np.genfromtxt(cont_hp.get_path("results") + f"_{name}_valid_loss.csv")
+        gen_train_loss[:len(train_loss)] = train_loss
+        gen_val_loss[:len(val_loss)] = val_loss
 
     networks = [gen_net]
     criterions = [gen_criterion]
@@ -203,14 +222,29 @@ def train_model(hp: Hyperparameters, use_cuda: bool=True):
     # Set the model fundamentals for the discriminator
     if not hp.baseline_model:
         disc_net = model.Discriminator()
-        
-        if use_cuda and cuda.is_available():
-            disc_net.cuda()
+        if cont_hp is not None:
+            path = cont_hp.get_path("models")
+            if not hp.baseline_model:
+                path += "_disc"
+            if use_cuda and cuda.is_available():
+                gen_net.load_state_dict(torch.load(path, map_location="cuda:0"))
+            else:
+                gen_net.load_state_dict(torch.load(path, map_location="cpu"))
+        else:
+            if use_cuda and cuda.is_available():
+                gen_net.cuda()
         
         disc_criterion = DiscriminatorLoss()
         disc_optim = optim.Adam(disc_net.parameters(), lr=hp.disc_lr)
-        disc_train_loss = zeros(hp.epoch_num)
-        disc_val_loss = zeros(hp.epoch_num)
+        disc_train_loss = np.zeros(hp.epoch_num)
+        disc_val_loss = np.zeros(hp.epoch_num)
+
+        # If continuing training, load the previous training and validation losses
+        if cont_hp is not None:
+            train_loss = np.genfromtxt(cont_hp.get_path("results") + f"_disc_train_loss.csv")
+            val_loss = np.genfromtxt(cont_hp.get_path("results") + f"_disc_valid_loss.csv")
+            disc_train_loss[:len(train_loss)] = train_loss
+            disc_val_loss[:len(val_loss)] = val_loss
 
         networks.append(disc_net)
         criterions.append(disc_criterion)
@@ -220,10 +254,11 @@ def train_model(hp: Hyperparameters, use_cuda: bool=True):
 
         print("INFO: Discriminator has", sum(p.numel() for p in networks[1].parameters()), "weights")
 
+    start_epoch = 0 if cont_hp is None else cont_hp.epoch_num + 1
     # Train
     if hp.baseline_model:
         print("================== Baseline training starting ==================")
-        for epoch in tqdm(range(hp.epoch_num), desc="Epochs"):  # loop over the dataset multiple times
+        for epoch in tqdm(range(start_epoch, hp.epoch_num), desc="Epochs"):  # loop over the dataset multiple times
             total_train_loss = 0.0 # Scaled by the number of samples
             total_samples = 0
             networks[0].train()
@@ -253,17 +288,16 @@ def train_model(hp: Hyperparameters, use_cuda: bool=True):
             tqdm.write(f"EPOCH #{epoch}  #####  Baseline Training loss = {loss_data[0][epoch]}  #####  Baseline Validation loss = {loss_data[1][epoch]}")
 
             # Save the model and csv file of the loss
-            if epoch == hp.epoch_num - 1:
+            if (epoch + 1) % checkpoint_per == 0 or epoch == hp.epoch_num - 1:
                 path = hp.copy_and_change(epoch_num=epoch).get_path("results")
-                savetxt("{}_baseline_train_loss.csv".format(path), loss_data[0])
-                savetxt("{}_baseline_valid_loss.csv".format(path), loss_data[1])
-            if epoch % 5 == 4 or epoch == hp.epoch_num - 1:
+                np.savetxt("{}_baseline_train_loss.csv".format(path), loss_data[0])
+                np.savetxt("{}_baseline_valid_loss.csv".format(path), loss_data[1])
                 path = hp.copy_and_change(epoch_num=epoch).get_path("models")
                 save(networks[0].state_dict(), path)
     
     else:
         print("================== Model training starting ==================")
-        for epoch in tqdm(range(hp.epoch_num), desc="Epochs"):  # loop over the dataset multiple times
+        for epoch in tqdm(range(start_epoch, hp.epoch_num), desc="Epochs"):  # loop over the dataset multiple times
             total_gen_train_loss = 0.0 # Scaled by number of samples
             total_disc_train_loss = 0.0
             total_samples = 0
@@ -308,13 +342,12 @@ def train_model(hp: Hyperparameters, use_cuda: bool=True):
             tqdm.write(f"EPOCH #{epoch}  #####  Discriminator Training loss = {loss_data[2][epoch]}  #####  Discriminator Validation loss = {loss_data[3][epoch]}")
 
             # Save the model and csv file of the loss
-            if epoch == hp.epoch_num - 1:
+            if (epoch + 1) % checkpoint_per == 0 or epoch == hp.epoch_num - 1:
                 path = hp.copy_and_change(epoch_num=epoch).get_path("results")
-                savetxt("{}_gen_train_loss.csv".format(path), loss_data[0])
-                savetxt("{}_gen_valid_loss.csv".format(path), loss_data[1])
-                savetxt("{}_disc_train_loss.csv".format(path), loss_data[2])
-                savetxt("{}_disc_valid_loss.csv".format(path), loss_data[3])
-            if epoch % 5 == 4 or epoch == hp.epoch_num - 1:
+                np.savetxt("{}_gen_train_loss.csv".format(path), loss_data[0])
+                np.savetxt("{}_gen_valid_loss.csv".format(path), loss_data[1])
+                np.savetxt("{}_disc_train_loss.csv".format(path), loss_data[2])
+                np.savetxt("{}_disc_valid_loss.csv".format(path), loss_data[3])
                 path = hp.copy_and_change(epoch_num=epoch).get_path("models")
                 save(networks[0].state_dict(), path + "_gen")
                 save(networks[1].state_dict(), path + "_disc")
