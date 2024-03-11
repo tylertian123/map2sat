@@ -7,7 +7,7 @@ else:
 import matplotlib.pyplot as plt
 import pandas as pd
 
-def plot_csv(split: str, name: str, hp: Hyperparameters):
+def plot_csv(split: str, name: str, hp: Hyperparameters, show: bool = True):
     """ Sample usage: plot_csv("validation", "baseline", hp)"""
 
     split = split.lower()
@@ -25,4 +25,26 @@ def plot_csv(split: str, name: str, hp: Hyperparameters):
     plt.grid(True)
 
     # Show the plot
-    plt.show()
+    if show:
+        plt.show()
+
+def plot_all(hp: Hyperparameters):
+    """Plot training and validation loss for generator and discriminator."""
+    if hp.baseline_model:
+        plot_csv("training", "baseline", hp, show=False)
+        plot_csv("validation", "baseline", hp, show=False)
+        plt.legend(["Training", "Validation"])
+        plt.title("Training and Validation Loss")
+        plt.show()
+    else:
+        plt.subplot(1, 2, 1)
+        plot_csv("training", "gen", hp, show=False)
+        plot_csv("validation", "gen", hp, show=False)
+        plt.legend(["Training", "Validation"])
+        plt.title("Generator Training and Validation Loss")
+        plt.subplot(1, 2, 2)
+        plot_csv("training", "disc", hp, show=False)
+        plot_csv("validation", "disc", hp, show=False)
+        plt.legend(["Training", "Validation"])
+        plt.title("Discriminator Training and Validation Loss")
+        plt.show()
