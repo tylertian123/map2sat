@@ -86,11 +86,16 @@ class Hyperparameters:
     disc_lr: float = 0.0001
     baseline_model: bool = True
 
+    data_path: str = "data/"
+
     def get_filename(self):
         name = "baseline" if self.baseline_model else "satgenerator"
         filename = f"model={name}-epoch_num={self.epoch_num}-batch_size={self.batch_size}-gen_lr={self.gen_lr}"
         if not self.baseline_model:
             filename = f"{filename}-disc_lr={self.disc_lr}"
+        if self.data_path is not None:
+            dataset = self.data_path.replace("/", "")
+            filename = f"{filename}-data_path={dataset}"
         return filename
     
     def get_path(self, dir_type: str):
@@ -161,7 +166,7 @@ def evaluate(networks: tuple, valid_data: DataLoader, criterions: tuple, baselin
         disc_loss = float(total_disc_loss) / (total_samples)
         return gen_loss, disc_loss
 
-def train_model(data_path: str, hp: Hyperparameters, use_cuda: bool=True):
+def train_model(hp: Hyperparameters, use_cuda: bool=True):
     """
     Train the model
 
@@ -176,7 +181,7 @@ def train_model(data_path: str, hp: Hyperparameters, use_cuda: bool=True):
     manual_seed(0)
     random.seed(0)
     # Load the data
-    train_data, valid_data, _ = load_data(path=data_path, batch_size=hp.batch_size)
+    train_data, valid_data, _ = load_data(path=hp.data_path, batch_size=hp.batch_size)
     # Set up the model fundamentals for the generator
     gen_net = model.Generator()
 

@@ -52,16 +52,16 @@ def img_tensor_to_numpy(img: torch.Tensor) -> np.ndarray:
     """
     return img.detach().numpy().transpose((1, 2, 0))
 
-def plot_outputs(hp: Hyperparameters, path: str, subset: str, n: int, start: int = 0):
+def plot_outputs(hp: Hyperparameters, subset: str, n: int, start: int = 0):
     """
     Plot generated outputs alongside inputs and ground truth.
 
-    path is the dataset directory. subset is either "train", "validation" or "test".
+    subset is either "train", "validation" or "test".
     n samples will be generated and displayed. If start is nonezero, the first samples in the dataset will be skipped.
     """
     model = load_model(hp, device="cpu")
     model.eval()
-    train_loader, val_loader, test_loader = load_data(path, batch_size=1, dataloader_test=False)
+    train_loader, val_loader, test_loader = load_data(hp.path, batch_size=1, dataloader_test=False)
     if subset == "train":
         loader = train_loader
     elif subset == "validation":

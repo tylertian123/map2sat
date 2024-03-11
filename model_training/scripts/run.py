@@ -4,4 +4,4 @@ from model import Generator, Discriminator
 
 if __name__ == "__main__":
     hp = Hyperparameters()
-    train_model(data_path="data/", hp=hp)
+    train_model(hp=hp)
