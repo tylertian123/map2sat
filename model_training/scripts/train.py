@@ -15,11 +15,11 @@ from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
 class GeneratorLoss(nn.Module):
-    def __init__(self, baseline_model: bool=True):
+    def __init__(self, lambda_: float = 1000.0, baseline_model: bool=True):
         super(GeneratorLoss, self).__init__()
         manual_seed(0)
         self.baseline = baseline_model
-        self.coeff = 1000
+        self.coeff = lambda_
         self.sig_ce = nn.BCEWithLogitsLoss()
         self.mae = nn.L1Loss()
     

@@ -108,7 +108,7 @@ class Generator(nn.Module):
             x = layer(x)
             x = cat([x, skip], dim=1)   # concatinate the result with the skip connections
         
-        x = nn.Tanh()(self.outlayer(x))
+        x = nn.Sigmoid()(self.outlayer(x))
 
         return x
 
