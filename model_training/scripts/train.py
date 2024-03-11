@@ -32,8 +32,8 @@ class GeneratorLoss(nn.Module):
         """
         if self.baseline == False:
             real_grid = ones_like(disc_generator_result)
-            gan_loss = self.sig_ce(real_grid, disc_generator_result)   # the generator should be good enought that the gan classifies it as real
-        l1_loss = self.mae(label, generated_image)   # reconstruction error
+            gan_loss = self.sig_ce(disc_generator_result, real_grid)   # the generator should be good enought that the gan classifies it as real
+        l1_loss = self.mae(generated_image, label)   # reconstruction error
 
         total_gen_loss = (self.coeff * l1_loss) if self.baseline else gan_loss + (self.coeff * l1_loss)
 
@@ -59,8 +59,8 @@ class DiscriminatorLoss(nn.Module):
         fake_grid = zeros_like(disc_generator_result)
         real_grid = ones_like(disc_label_result)
 
-        generated_loss = self.sig_ce(fake_grid, disc_generator_result)   # the discriminator has to classify the generated image as fake
-        real_loss = self.sig_ce(real_grid, disc_label_result)   # the discriminator has to classify the label image as real
+        generated_loss = self.sig_ce(disc_generator_result, fake_grid)   # the discriminator has to classify the generated image as fake
+        real_loss = self.sig_ce(disc_label_result, real_grid)   # the discriminator has to classify the label image as real
 
         total_disc_loss = generated_loss + real_loss
 
