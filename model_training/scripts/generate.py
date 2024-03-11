@@ -1,8 +1,11 @@
 import torch
 import numpy as np
+import PIL.Image
+from torchvision import transforms
 from matplotlib import gridspec, pyplot as plt
 
 import itertools
+from typing import Union
 
 import os
 if "COLAB_GPU" in os.environ:
@@ -15,7 +18,7 @@ else:
     from load_dataset import load_data
 
 
-def load_model(hp: Hyperparameters, type: str = None, device: str = "cpu") -> Generator | Discriminator:
+def load_model(hp: Hyperparameters, type: str = None, device: str = "cpu") -> Union[Generator, Discriminator]:
     """
     Load a saved model.
     
@@ -52,16 +55,17 @@ def img_tensor_to_numpy(img: torch.Tensor) -> np.ndarray:
     """
     return img.detach().numpy().transpose((1, 2, 0))
 
-def plot_outputs(hp: Hyperparameters, subset: str, n: int, start: int = 0):
+@torch.no_grad()
+def plot_outputs(hp: Hyperparameters, subset: str, n: int, start: int = 0, show: bool = True):
     """
     Plot generated outputs alongside inputs and ground truth.
 
     subset is either "train", "validation" or "test".
     n samples will be generated and displayed. If start is nonezero, the first samples in the dataset will be skipped.
     """
-    model = load_model(hp, device="cpu")
+    model = load_model(hp, device="cpu", type=None if hp.baseline_model else "gen")
     model.eval()
-    train_loader, val_loader, test_loader = load_data(hp.path, batch_size=1, dataloader_test=False)
+    train_loader, val_loader, test_loader = load_data(hp.data_path, batch_size=1, dataloader_test=False)
     if subset == "train":
         loader = train_loader
     elif subset == "validation":
@@ -88,3 +92,30 @@ def plot_outputs(hp: Hyperparameters, subset: str, n: int, start: int = 0):
 
         if i + 1 >= n:
             break
+    if show:
+        plt.show()
+
+def generate_and_plot(hp: Hyperparameters, img_path: str, ground_truth: str = None, show: bool = True):
+    """Generate a satellite image given an input image and plot it alongside input, optionally with ground truth."""
+    model = load_model(hp, device="cpu", type=None if hp.baseline_model else "gen")
+    model.eval()
+    input = transforms.ToTensor()(PIL.Image.open(img_path).convert("RGB"))
+    print(input.shape)
+    output = img_tensor_to_numpy(model(input.unsqueeze(0))[0])
+    input = img_tensor_to_numpy(input)
+    if ground_truth is not None:
+        gs = np.array(PIL.Image.open(ground_truth).convert("RGB"))
+        plt.subplot(1, 3, 1)
+        plt.imshow(input)
+        plt.subplot(1, 3, 2)
+        plt.imshow(output)
+        plt.subplot(1, 3, 3)
+        plt.imshow(gs)
+    else:
+        plt.subplot(1, 2, 1)
+        plt.imshow(input)
+        plt.subplot(1, 2, 2)
+        plt.imshow(output)
+    if show:
+        plt.show()
+
