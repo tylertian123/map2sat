@@ -60,7 +60,7 @@ async def sample_roi(map_dir: str, sat_dir: float, roi: tuple[tuple[float, float
     total_sampled = 0
 
     async def sample_subset(session, subset: list[tuple[float, float]]):
-        nonlocal total_sampled
+        nonlocal total_sampled, bearing
         for lat, lon in subset:
             total_sampled += 1
             try:
