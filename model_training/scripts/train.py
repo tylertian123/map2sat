@@ -3,9 +3,11 @@ import model_training.scripts.model as model
 
 import dataclasses
 
+import torch
 from torch import nn, manual_seed, ones_like, zeros_like, optim, save, cuda
 from torch.utils.data import DataLoader
 from numpy import random, zeros, savetxt
+from tqdm.auto import tqdm
 
 class GeneratorLoss(nn.Module):
     def __init__(self, baseline_model: bool=True):
@@ -91,7 +93,8 @@ class Hyperparameters:
 
     def copy_and_change(self, **kwargs):
         return dataclasses.replace(self, **kwargs)
-    
+
+@torch.no_grad()
 def evaluate(networks: tuple, valid_data: DataLoader, criterions: tuple, baseline_model: bool=True, use_cuda: bool=True):
     """
     Evaluate the model(s) based on the validation data
@@ -135,6 +138,10 @@ def evaluate(networks: tuple, valid_data: DataLoader, criterions: tuple, baselin
         for i, data in enumerate(valid_data, 0):
             # Get the inputs
             inputs, labels = data
+            # Place on GPU
+            if use_cuda and cuda.is_available():
+                inputs = inputs.cuda()
+                labels = labels.cuda()
             # Forward pass
             gen_outputs = networks[0](inputs)
             disc_labels_outputs = networks[1](inputs, labels)
@@ -206,11 +213,11 @@ def train_model(data_path: str, hp: Hyperparameters, use_cuda: bool=True):
     # Train
     if hp.baseline_model:
         print("================== Baseline training starting ==================")
-        for epoch in range(hp.epoch_num):  # loop over the dataset multiple times
+        for epoch in tqdm(range(hp.epoch_num), desc="Epochs"):  # loop over the dataset multiple times
             total_train_loss = 0.0 # Scaled by the number of samples
             total_samples = 0
             networks[0].train()
-            for i, data in enumerate(train_data, 0):
+            for i, data in tqdm(enumerate(train_data, 0), desc="Iterations", total=len(train_data), leave=False):
                 # Get the inputs
                 inputs, labels = data
 
@@ -233,7 +240,7 @@ def train_model(data_path: str, hp: Hyperparameters, use_cuda: bool=True):
             # Save average loss data
             loss_data[0][epoch] = float(total_train_loss) / (total_samples)
             loss_data[1][epoch] = evaluate(networks, valid_data, criterions, hp.baseline_model, use_cuda)
-            print(f"EPOCH #{epoch}  #####  Baseline Training loss = {loss_data[0][epoch]}  #####  Baseline Validation loss = {loss_data[1][epoch]}")
+            tqdm.write(f"EPOCH #{epoch}  #####  Baseline Training loss = {loss_data[0][epoch]}  #####  Baseline Validation loss = {loss_data[1][epoch]}")
 
             # Save the model and csv file of the loss
             if epoch == hp.epoch_num - 1:
@@ -246,33 +253,38 @@ def train_model(data_path: str, hp: Hyperparameters, use_cuda: bool=True):
     
     else:
         print("================== Model training starting ==================")
-        for epoch in range(hp.epoch_num):  # loop over the dataset multiple times
+        for epoch in tqdm(range(hp.epoch_num), desc="Epochs"):  # loop over the dataset multiple times
             total_gen_train_loss = 0.0 # Scaled by number of samples
             total_disc_train_loss = 0.0
             total_samples = 0
             networks[0].train()
             networks[1].train()
-            for i, data in enumerate(train_data, 0):
+            for i, data in tqdm(enumerate(train_data, 0), desc="Iterations", total=len(train_data), leave=False):
                 # Get the inputs
                 inputs, labels = data
                 # Place on GPU if available
                 if use_cuda and cuda.is_available():
                     inputs = inputs.cuda()
                     labels = labels.cuda()
-                # Zero the parameter gradients
-                optimizers[0].zero_grad()
-                optimizers[1].zero_grad()
-                # Forward pass, backward pass, and optimize
-                gen_outputs = networks[0](inputs)
-                disc_labels_outputs = networks[1](inputs, labels)
-                disc_generated_outputs = networks[1](inputs, gen_outputs)
                 
-                gen_loss = criterions[0](disc_generated_outputs, gen_outputs, labels)
+                # Train the discriminator
+                optimizers[1].zero_grad()
+                disc_labels_outputs = networks[1](inputs, labels) # Discriminator output on real inputs
+                gen_outputs = networks[0](inputs) # Generator outputs
+                # Detach the generator outputs so gradients are not calculated for generator weights
+                disc_generated_outputs = networks[1](inputs, gen_outputs.detach()) # Discriminator output on fake inputs
                 disc_loss = criterions[1](disc_labels_outputs, disc_generated_outputs)
-                gen_loss.backward()
                 disc_loss.backward()
-                optimizers[0].step()
                 optimizers[1].step()
+
+                # Train the generator
+                optimizers[0].zero_grad()
+                # Recompute discriminator outputs on the generator outputs, this time without detach
+                disc_generated_outputs = networks[1](inputs, gen_outputs)
+                gen_loss = criterions[0](disc_generated_outputs, gen_outputs, labels)
+                gen_loss.backward()
+                optimizers[0].step()
+                
                 # Calculate loss
                 total_gen_train_loss += gen_loss.item() * len(labels)
                 total_disc_train_loss += disc_loss.item() * len(labels)
@@ -282,8 +294,8 @@ def train_model(data_path: str, hp: Hyperparameters, use_cuda: bool=True):
             loss_data[0][epoch] = float(total_gen_train_loss) / (total_samples)
             loss_data[2][epoch] = float(total_disc_train_loss) / (total_samples)
             loss_data[1][epoch], loss_data[3][epoch] = evaluate(networks, valid_data, criterions, hp.baseline_model, use_cuda)
-            print(f"EPOCH #{epoch}  #####  Generator Training loss = {loss_data[0][epoch]}  #####  Generator Validation loss = {loss_data[1][epoch]}")
-            print(f"EPOCH #{epoch}  #####  Discriminator Training loss = {loss_data[2][epoch]}  #####  Discriminator Validation loss = {loss_data[3][epoch]}")
+            tqdm.write(f"EPOCH #{epoch}  #####  Generator Training loss = {loss_data[0][epoch]}  #####  Generator Validation loss = {loss_data[1][epoch]}")
+            tqdm.write(f"EPOCH #{epoch}  #####  Discriminator Training loss = {loss_data[2][epoch]}  #####  Discriminator Validation loss = {loss_data[3][epoch]}")
 
             # Save the model and csv file of the loss
             if epoch == hp.epoch_num - 1:
