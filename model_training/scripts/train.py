@@ -85,17 +85,17 @@ class Hyperparameters:
     gen_lr: float = 0.0001
     disc_lr: float = 0.0001
     baseline_model: bool = True
+    name: str = None
 
     data_path: str = "data/"
 
     def get_filename(self):
-        name = "baseline" if self.baseline_model else "satgenerator"
-        filename = f"model={name}-epoch_num={self.epoch_num}-batch_size={self.batch_size}-gen_lr={self.gen_lr}"
+        model = "baseline" if self.baseline_model else "satgenerator"
+        filename = f"model={model}-epoch_num={self.epoch_num}-batch_size={self.batch_size}-gen_lr={self.gen_lr}"
         if not self.baseline_model:
             filename = f"{filename}-disc_lr={self.disc_lr}"
-        if self.data_path is not None:
-            dataset = self.data_path.replace("/", "")
-            filename = f"{filename}-data_path={dataset}"
+        if self.name is not None:
+            filename = f"{self.name}-{filename}"
         return filename
     
     def get_path(self, dir_type: str):
