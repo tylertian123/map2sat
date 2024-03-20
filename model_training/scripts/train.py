@@ -192,13 +192,15 @@ def train_model(hp: Hyperparameters, cont_hp: Hyperparameters = None, checkpoint
         if not hp.baseline_model:
             path += "_gen"
         if use_cuda and cuda.is_available():
+            print("INFO: Loaded saved generator model to GPU")
             gen_net.load_state_dict(torch.load(path, map_location="cuda:0"))
         else:
+            print("INFO: Loaded saved generator model to CPU")
             gen_net.load_state_dict(torch.load(path, map_location="cpu"))
-    else:
-        if use_cuda and cuda.is_available():
-            gen_net.cuda()
-    
+            
+    if use_cuda and cuda.is_available():
+        gen_net.cuda()
+
     gen_criterion = GeneratorLoss(baseline_model=hp.baseline_model)
     gen_optim = optim.Adam(gen_net.parameters(), lr=hp.gen_lr)
     gen_train_loss = np.zeros(hp.epoch_num)
@@ -227,12 +229,14 @@ def train_model(hp: Hyperparameters, cont_hp: Hyperparameters = None, checkpoint
             if not hp.baseline_model:
                 path += "_disc"
             if use_cuda and cuda.is_available():
+                print("INFO: Loaded saved discriminator model to GPU")
                 disc_net.load_state_dict(torch.load(path, map_location="cuda:0"))
             else:
+                print("INFO: Loaded saved discriminator model to CPU")
                 disc_net.load_state_dict(torch.load(path, map_location="cpu"))
-        else:
-            if use_cuda and cuda.is_available():
-                disc_net.cuda()
+
+        if use_cuda and cuda.is_available():
+            disc_net.cuda()
         
         disc_criterion = DiscriminatorLoss()
         disc_optim = optim.Adam(disc_net.parameters(), lr=hp.disc_lr)
