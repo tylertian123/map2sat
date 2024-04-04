@@ -18,7 +18,7 @@ def plot_csv(split: str, name: str, hp: Hyperparameters, show: bool = True):
 
     df = pd.read_csv(filepath, header=None, names=['Loss'])
 
-    plt.plot(df['Loss'])
+    plt.plot(df['Loss'][:hp.epoch_num + 1])
     plt.title(f'{split} loss')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')

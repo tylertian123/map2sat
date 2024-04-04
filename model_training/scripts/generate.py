@@ -56,12 +56,13 @@ def img_tensor_to_numpy(img: torch.Tensor) -> np.ndarray:
     return img.detach().numpy().transpose((1, 2, 0))
 
 @torch.no_grad()
-def plot_outputs(hp: Hyperparameters, subset: str, n: int, start: int = 0, show: bool = True):
+def plot_outputs(hp: Hyperparameters, subset: str, n: int, start: int = 0, show: bool = True, save_as: str = None):
     """
     Plot generated outputs alongside inputs and ground truth.
 
     subset is either "train", "validation" or "test".
     n samples will be generated and displayed. If start is nonezero, the first samples in the dataset will be skipped.
+    If save_as is not None, the last generated image will be saved to that path.
     """
     model = load_model(hp, device="cpu", type=None if hp.baseline_model else "gen")
     model.eval()
@@ -92,9 +93,12 @@ def plot_outputs(hp: Hyperparameters, subset: str, n: int, start: int = 0, show:
 
         if i + 1 >= n:
             break
+    if save_as is not None:
+        PIL.Image.fromarray((output * 255).astype(np.uint8)).save(save_as)
     if show:
         plt.show()
 
+@torch.no_grad()
 def generate_and_plot(hp: Hyperparameters, img_path: str, ground_truth: str = None, show: bool = True):
     """Generate a satellite image given an input image and plot it alongside input, optionally with ground truth."""
     model = load_model(hp, device="cpu", type=None if hp.baseline_model else "gen")

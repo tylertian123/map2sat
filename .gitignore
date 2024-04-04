@@ -11,3 +11,7 @@ mapbox_api_key.txt
 
 .ipynb_checkpoints
 *.zip
+
+model_training/models
+model_training/results
+results/
