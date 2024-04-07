@@ -52,7 +52,7 @@ class Generator(nn.Module):
         encoder.append(nn.Conv2d(in_filter, out_filter, kernel_size, stride=stride, padding=padding))
         if batch_norm:
             encoder.append(nn.BatchNorm2d(out_filter))
-        encoder.append(nn.LeakyReLU())
+        encoder.append(nn.LeakyReLU(0.2))
         
         return encoder
     
@@ -128,7 +128,7 @@ class Discriminator(nn.Module):
         self.padding = nn.ZeroPad2d(1)
         self.conv1 = nn.Conv2d(in_channels=256, out_channels=512, kernel_size=4, stride=1)
         self.batchnorm = nn.BatchNorm2d(512)
-        self.activation = nn.LeakyReLU()
+        self.activation = nn.LeakyReLU(0.2)
         self.conv2 = nn.Conv2d(in_channels=512, out_channels=1, kernel_size=4, stride=1)
     
     def downsample(self, in_filter: int, out_filter: int, kernel_size: int, stride: int, batch_norm: bool=True):
@@ -153,7 +153,7 @@ class Discriminator(nn.Module):
         encoder.append(nn.Conv2d(in_filter, out_filter, kernel_size, stride=stride, padding=padding))
         if batch_norm:
             encoder.append(nn.BatchNorm2d(out_filter))
-        encoder.append(nn.LeakyReLU())
+        encoder.append(nn.LeakyReLU(0.2))
         
         return encoder
     

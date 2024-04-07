@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
 class GeneratorLoss(nn.Module):
-    def __init__(self, lambda_: float = 1000.0, baseline_model: bool=True):
+    def __init__(self, lambda_: float = 250.0, baseline_model: bool=True):
         super(GeneratorLoss, self).__init__()
         manual_seed(0)
         self.baseline = baseline_model
@@ -197,7 +197,7 @@ def train_model(hp: Hyperparameters, cont_hp: Hyperparameters = None, checkpoint
         else:
             print("INFO: Loaded saved generator model to CPU")
             gen_net.load_state_dict(torch.load(path, map_location="cpu"))
-            
+
     if use_cuda and cuda.is_available():
         gen_net.cuda()
 
