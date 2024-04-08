@@ -2,7 +2,7 @@
 
 This project uses a Conditional Generative Adversarial Network (cGAN) architecture to generate photorealistic predictions of satellite images from road map images. The architecture is adapted from the pix2pix architecture introduced by [Isola et al. (2016)](https://arxiv.org/pdf/1611.07004.pdf), with a U-Net acting as the generator and a PatchGAN discriminator.
 
-Project authors (in no particular order):
+Project authors (in alphabetical order):
 
 * Ardavan Alaei Fard (@ardavan34)
 * Jonathan Joonhan Ryu (@ryujonathan)
